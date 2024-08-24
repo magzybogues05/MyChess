@@ -1,9 +1,15 @@
-const { Chess }=require("chess.js");
-const { GAME_OVER, INIT_GAME, MOVE } = require('./Messages')
+import { Chess } from "chess.js";
+import { WebSocket } from "ws";
+import { GAME_OVER, INIT_GAME, MOVE } from "./messages";
 
- class Game{
-
-    constructor(player1,player2){
+export class Game{
+    public player1:WebSocket;
+    public player2:WebSocket;
+    private board:Chess;
+    private startTime:Date;
+    private moveCount:number;
+    constructor(player1:WebSocket,player2:WebSocket)
+    {
         this.player1=player1;
         this.player2=player2;
         this.board=new Chess();
@@ -22,49 +28,35 @@ const { GAME_OVER, INIT_GAME, MOVE } = require('./Messages')
             }
         }));
     }
-
-    makeMove(socket,move)
+    makeMove(socket:WebSocket,move:{
+        from:string;
+        to:string;
+    })
     {
-        //validation
-        if(this.moveCount%2==0 && socket!==this.player1)
-        {
-            return;
-        }
-        if(this.moveCount%2==1 && socket!==this.player2)
-        {
-            return; 
-        }
         try{
+            if(this.moveCount%2==0 && socket!==this.player1)
+            {
+                return;
+            }
+            if(this.moveCount%2==1 && socket!==this.player2){
+                return;
+            }
             this.board.move(move);
             
         }
-        catch(e)
-        {
-            console.log(e);
-            return;
+        catch(e){
+
         }
-
-        //check if the game is over
-
         if(this.board.isGameOver())
         {
-            //send game over to both the players
             this.player1.send(JSON.stringify({
                 type:GAME_OVER,
                 payload:{
-                    winner: this.board.turn()==="w"?"black":"white"
+                    winner: this.board.turn()==="w"?"Black":"White",
                 }
-            }))
-            this.player2.send(JSON.stringify({
-                type:GAME_OVER,
-                payload:{
-                    winner: this.board.turn()==="w"?"black":"white"
-                }
-            }))
-            return;
+            }));
         }
-
-        if(this.moveCount%2==0)
+        if(this.moveCount%2===0)
         {
             this.player2.send(JSON.stringify({
                 type:MOVE,
@@ -78,10 +70,5 @@ const { GAME_OVER, INIT_GAME, MOVE } = require('./Messages')
             }))
         }
         this.moveCount++;
-
-        //send the updated board to both the players
     }
-
 }
-
-module.exports={Game};
